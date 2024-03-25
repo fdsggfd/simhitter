@@ -1,16 +1,18 @@
-import schedule
-import time
 import requests
+from datetime import datetime, timedelta
+import time
 
 # Your Discord webhook URL
 WEBHOOK_URL = 'https://discord.com/api/webhooks/1221726494213279756/3dFSf14g7nS7y2hnHUBjoJxWFaHB7O4w0EVZMzPteJ5wH_Ztb0oHQzonX-m2u9-SEMc-'
 
 # Define the message content for notifications
-morning_message = "Warehouse open, start hitting those orders NOW🎯"
-afternoon_message = "⏰Shipping window closing HIT NOW 1 hour left for closure⏰"
-evening_message = "Window closed, packages being delivered ... "
-sunday_morning_message = "Monday preload hits, start orders now for monday shipping"
-sunday_evening_message = "📦START HITS NOW FOR MONDAY DISPATCH📦"
+messages = {
+    1: "Warehouse open, start hitting those orders NOW🎯",
+    2: "⏰Shipping window closing HIT NOW 1 hour left for closure⏰",
+    3: "Window closed, packages being delivered ... ",
+    4: "Monday preload hits, start orders now for monday shipping",
+    5: "📦START HITS NOW FOR MONDAY DISPATCH📦"
+}
 
 # Function to fetch current time from TimezoneDB API
 def get_current_time():
@@ -23,7 +25,7 @@ def get_current_time():
     }
     response = requests.get(url, params=params)
     data = response.json()
-    current_time = data['formatted']
+    current_time = datetime.strptime(data['formatted'], "%Y-%m-%d %H:%M:%S")
     return current_time
 
 # Function to send notification
@@ -33,27 +35,55 @@ def send_notification(message):
     }
     requests.post(WEBHOOK_URL, json=data)
 
+# Function to display menu and handle user input
+def display_menu():
+    print("Choose a message to send:")
+    for key, value in messages.items():
+        print(f"{key}. {value}")
+
+    while True:
+        try:
+            choice = int(input("Enter the number of the message you want to send (1-5): "))
+            if choice in messages:
+                send_notification(messages[choice])
+                print("Message sent successfully!")
+                break
+            else:
+                print("Invalid choice. Please enter a number between 1 and 5.")
+        except ValueError:
+            print("Invalid input. Please enter a valid number.")
+
 # Define the job scheduling
 def schedule_jobs():
+    print("Bot is running and connected to the webhook successfully.")
     while True:
         current_time = get_current_time()
-        if current_time.endswith("09:00:00"):
-            send_notification(morning_message)
-            time.sleep(86400)  # Sleep for 24 hours
-        elif current_time.endswith("15:00:00"):
-            send_notification(afternoon_message)
-            time.sleep(86400)  # Sleep for 24 hours
-        elif current_time.endswith("17:00:00"):
-            send_notification(evening_message)
-            time.sleep(86400)  # Sleep for 24 hours
-        elif current_time.startswith("Sun 09:00"):
-            send_notification(sunday_morning_message)
-            time.sleep(604800)  # Sleep for 7 days
-        elif current_time.startswith("Sun 18:00"):
-            send_notification(sunday_evening_message)
-            time.sleep(604800)  # Sleep for 7 days
+        next_notification_time = None
+        if current_time.strftime("%H:%M:%S") == "09:00:00":
+            send_notification(messages[1])
+            next_notification_time = current_time + timedelta(days=1)
+        elif current_time.strftime("%H:%M:%S") == "15:00:00":
+            send_notification(messages[2])
+            next_notification_time = current_time + timedelta(days=1)
+        elif current_time.strftime("%H:%M:%S") == "17:00:00":
+            send_notification(messages[3])
+            next_notification_time = current_time + timedelta(days=1)
+        elif current_time.strftime("%a %H:%M:%S") == "Sun 09:00:00":
+            send_notification(messages[4])
+            next_notification_time = current_time + timedelta(days=7)
+        elif current_time.strftime("%a %H:%M:%S") == "Sun 18:00:00":
+            send_notification(messages[5])
+            next_notification_time = current_time + timedelta(days=7)
+        
+        if next_notification_time:
+            time_diff = next_notification_time - current_time
+            hours, remainder = divmod(time_diff.seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            print(f"Next message will be sent in {hours} hours, {minutes} minutes, and {seconds} seconds.")
+            time.sleep(30)  # Check every 30 seconds
         else:
-            time.sleep(60)  # Check every minute
+            time.sleep(30)  # Check every 30 seconds if no next_notification_time is set
 
 if __name__ == "__main__":
+    display_menu()
     schedule_jobs()
