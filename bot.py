@@ -77,9 +77,10 @@ def schedule_jobs():
         
         if next_notification_time:
             time_diff = next_notification_time - current_time
-            hours, remainder = divmod(time_diff.seconds, 3600)
+            total_seconds = time_diff.total_seconds()
+            hours, remainder = divmod(total_seconds, 3600)
             minutes, seconds = divmod(remainder, 60)
-            print(f"Next message will be sent in {hours} hours, {minutes} minutes, and {seconds} seconds.")
+            print(f"Next message will be sent in {int(hours)} hours, {int(minutes)} minutes, and {int(seconds)} seconds.")
             time.sleep(30)  # Check every 30 seconds
         else:
             time.sleep(30)  # Check every 30 seconds if no next_notification_time is set
